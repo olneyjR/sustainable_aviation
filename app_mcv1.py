@@ -2,19 +2,15 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import numpy as np
-import os
 
 # Page configuration
 st.set_page_config(
-    page_title="Aviation Sustainability Dashboard V2",
+    page_title="Aviation Sustainability Dashboard",
     layout="wide"
 )
 
 # Title
-st.title("Aviation Sustainability Categories (V2)")
-
-# Define data directory (point to the correct version 2 directory)
-DATA_DIR = "sustainable_aviation_v2"  # Make sure this directory exists
+st.title("Aviation Sustainability Categories")
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
@@ -23,25 +19,25 @@ page = st.sidebar.radio(
     ["Main Categories", "Sub Categories", "Main Category Similarity", "Sub Category Similarity"]
 )
 
-# Try to load all data files from the v2 subdirectory
+# Try to load all data files
 try:
-    # Load main category data - using correct filenames with "2" instead of "_v2"
-    main_df = pd.read_csv(os.path.join(DATA_DIR, 'main_category_summary2.csv'))
+    # Load main category data
+    main_df = pd.read_csv('main_category_summary.csv')
     
     # Load sub-category data
-    sub_df = pd.read_csv(os.path.join(DATA_DIR, 'sub_category_summary2.csv'))
+    sub_df = pd.read_csv('sub_category_summary.csv')
     
     # Load main similarity matrix
-    main_sim_df = pd.read_csv(os.path.join(DATA_DIR, 'main_jaccard_matrix2.csv'))
+    main_sim_df = pd.read_csv('main_jaccard_matrix.csv')
     
     # Load sub similarity matrix
-    sub_sim_df = pd.read_csv(os.path.join(DATA_DIR, 'sub_jaccard_matrix2.csv'))
+    sub_sim_df = pd.read_csv('sub_jaccard_matrix.csv')
     
     # Data loaded successfully
-    st.sidebar.success(f"All data files loaded successfully from {DATA_DIR}!")
+    st.sidebar.success("All data files loaded successfully!")
 except FileNotFoundError as e:
     # Show error message but continue with available data
-    st.sidebar.error(f"Some data files not found in {DATA_DIR}: {str(e)}")
+    st.sidebar.error(f"Some data files not found: {str(e)}")
     # Create empty dataframes for missing files
     if 'main_df' not in locals():
         main_df = pd.DataFrame({
@@ -150,7 +146,7 @@ def show_sub_categories():
     st.header("Sub Categories Analysis - All Subcategories")
     
     if sub_df.empty:
-        st.warning(f"Sub-category data not available. Please make sure sub_category_summary2.csv is in the {DATA_DIR} directory.")
+        st.warning("Sub-category data not available. Please make sure sub_category_summary.csv is in the same directory as this app.")
         return
     
     # Metric selector
@@ -174,7 +170,7 @@ def show_sub_categories():
     # Create combined category name for better labels
     df_sorted['Full_Category'] = df_sorted['MC'] + ': ' + df_sorted['PC']
     
-    # Limit to top 16 for better visibility (can be adjusted)
+    # Limit to top 10 for better visibility (can be adjusted)
     # Comment out this line if you want to see all subcategories
     df_top = df_sorted.head(16)
     
@@ -271,7 +267,7 @@ def show_main_similarity():
     st.header("Main Category Similarity Analysis")
     
     if main_sim_df.empty:
-        st.warning(f"Main category similarity data not available. Please make sure main_jaccard_matrix2.csv is in the {DATA_DIR} directory.")
+        st.warning("Main category similarity data not available. Please make sure main_jaccard_matrix.csv is in the same directory as this app.")
         return
     
     # Convert similarity data to matrix format for visualization
@@ -335,12 +331,12 @@ def show_main_similarity():
     - This analysis helps identify which sustainability topics tend to be discussed together.
     """)
 
-# Function for Sub Category Similarity Analysis page (no filters) - MODIFIED
+# Function for Sub Category Similarity Analysis page (no filters)
 def show_sub_similarity():
     st.header("Sub Category Similarity Analysis")
     
     if sub_sim_df.empty:
-        st.warning(f"Sub-category similarity data not available. Please make sure sub_jaccard_matrix2.csv is in the {DATA_DIR} directory.")
+        st.warning("Sub-category similarity data not available. Please make sure sub_jaccard_matrix.csv is in the same directory as this app.")
         return
     
     # Process the sub-category data
@@ -402,91 +398,45 @@ def show_sub_similarity():
     if st.checkbox("Show all top 20 pairs"):
         st.dataframe(top_similarities[['Category1', 'Category2', 'Jaccard']].reset_index(drop=True), use_container_width=True)
     
-    # Show FULL heatmap of ALL subcategories instead of just top ones
-    st.subheader("Complete Similarity Heatmap for All Subcategories")
+    # Show heatmap of top similarities
+    st.subheader("Similarity Heatmap for Top Subcategories")
     
-    # Get all unique categories
-    all_categories = sorted(list(set(sub_sim_df['Category1'].unique())))
+    # Get the top subcategories for the heatmap (too many might make it unreadable)
+    top_categories = set()
+    for _, row in top_similarities.head(10).iterrows():
+        top_categories.add(row['Category1'])
+        top_categories.add(row['Category2'])
     
-    # Display controls to limit the number of categories if needed
-    if len(all_categories) > 30:
-        st.warning(f"There are {len(all_categories)} subcategories, which may make the heatmap difficult to read. Consider using the filters below.")
-        
-        # Add option to limit the number of displayed categories
-        max_categories = st.slider("Maximum number of subcategories to display", 
-                                  min_value=10, 
-                                  max_value=len(all_categories),
-                                  value=min(30, len(all_categories)),
-                                  step=5)
-        
-        # Option to filter by main category
-        if 'MC1' in sub_sim_df.columns:
-            main_categories = sorted(sub_sim_df['MC1'].unique())
-            selected_mc = st.multiselect("Filter by main category", 
-                                        options=main_categories,
-                                        default=[])
-            
-            if selected_mc:
-                # Filter categories by selected main categories
-                filtered_categories = sub_sim_df[sub_sim_df['MC1'].isin(selected_mc)]['Category1'].unique()
-                all_categories = sorted(list(set(filtered_categories)))
-                
-                # If still too many, limit by the max_categories
-                if len(all_categories) > max_categories:
-                    # Get the categories with highest average Jaccard similarity
-                    avg_jaccard = {}
-                    for cat in all_categories:
-                        cat_rows = sub_sim_df[(sub_sim_df['Category1'] == cat) & (sub_sim_df['Category1'] != sub_sim_df['Category2'])]
-                        avg_jaccard[cat] = cat_rows['Jaccard'].mean()
-                    
-                    # Sort categories by average Jaccard similarity
-                    sorted_cats = sorted(avg_jaccard.items(), key=lambda x: x[1], reverse=True)
-                    all_categories = [cat for cat, _ in sorted_cats[:max_categories]]
-            else:
-                # If no main category selected, just limit by max_categories
-                if len(all_categories) > max_categories:
-                    # Get the categories with highest average Jaccard similarity
-                    avg_jaccard = {}
-                    for cat in all_categories:
-                        cat_rows = sub_sim_df[(sub_sim_df['Category1'] == cat) & (sub_sim_df['Category1'] != sub_sim_df['Category2'])]
-                        avg_jaccard[cat] = cat_rows['Jaccard'].mean()
-                    
-                    # Sort categories by average Jaccard similarity
-                    sorted_cats = sorted(avg_jaccard.items(), key=lambda x: x[1], reverse=True)
-                    all_categories = [cat for cat, _ in sorted_cats[:max_categories]]
-        else:
-            # If main categories not available, just limit by max_categories
-            if len(all_categories) > max_categories:
-                all_categories = all_categories[:max_categories]
+    top_categories = sorted(list(top_categories))
     
-    # Filter the dataframe to only include selected categories
+    # Filter the dataframe to only include these categories
     filtered_sim = sub_sim_df[
-        (sub_sim_df['Category1'].isin(all_categories)) & 
-        (sub_sim_df['Category2'].isin(all_categories))
+        (sub_sim_df['Category1'].isin(top_categories)) & 
+        (sub_sim_df['Category2'].isin(top_categories))
     ]
     
-    # Create a matrix for heatmap
-    heatmap_matrix = np.zeros((len(all_categories), len(all_categories)))
+    # Create a matrix for heatmap (assumes Category1 and Category2 contain the same values)
+    heatmap_matrix = np.zeros((len(top_categories), len(top_categories)))
     
     # Fill the matrix
     for _, row in filtered_sim.iterrows():
-        if row['Category1'] in all_categories and row['Category2'] in all_categories:
-            i = all_categories.index(row['Category1'])
-            j = all_categories.index(row['Category2'])
+        if row['Category1'] in top_categories and row['Category2'] in top_categories:
+            i = top_categories.index(row['Category1'])
+            j = top_categories.index(row['Category2'])
             heatmap_matrix[i][j] = row['Jaccard']
     
     # Create a dataframe for the heatmap
     display_categories = []
-    for cat in all_categories:
+    for cat in top_categories:
         if 'Name1' in sub_sim_df.columns:
             # Find the display name for this category
             display_name = sub_sim_df[sub_sim_df['Category1'] == cat]['Name1'].iloc[0]
             # Truncate if too long
-            display_name = display_name[:20] + '...' if len(display_name) > 20 else display_name
+            display_name = display_name[:30] + '...' if len(display_name) > 30 else display_name
             display_categories.append(display_name)
         else:
             # Truncate if too long
-            display_cat = cat[:20] + '...' if len(cat) > 20 else cat
+            display_cat = cat[:30] + '...' if len(cat) > 30 else cat
             display_categories.append(display_cat)
     
     heatmap_df = pd.DataFrame(heatmap_matrix, index=display_categories, columns=display_categories)
@@ -498,39 +448,32 @@ def show_sub_similarity():
         'Jaccard': [heatmap_df.loc[cat1, cat2] for cat1 in display_categories for cat2 in display_categories]
     })
     
-    # Adjust the chart height based on the number of categories
-    chart_height = min(max(500, len(all_categories) * 20), 1000)
-    chart_width = min(max(600, len(all_categories) * 20), 1000)
-    
     # Create heatmap with better axis labels
     heatmap = alt.Chart(heatmap_data).mark_rect().encode(
-        x=alt.X('Category2:N', title=None, axis=alt.Axis(labelAngle=45, labelLimit=200, labelFontSize=9)),
-        y=alt.Y('Category1:N', title=None, axis=alt.Axis(labelLimit=200, labelFontSize=9)),
+        x=alt.X('Category2:N', title=None, axis=alt.Axis(labelAngle=45, labelLimit=200, labelFontSize=10)),
+        y=alt.Y('Category1:N', title=None, axis=alt.Axis(labelLimit=200, labelFontSize=10)),
         color=alt.Color('Jaccard:Q', scale=alt.Scale(scheme='blues')),
         tooltip=['Category1', 'Category2', 'Jaccard']
     ).properties(
-        width=chart_width,
-        height=chart_height,
-        title="Jaccard Similarity Between All Subcategories"
+        width=600,
+        height=500,
+        title="Jaccard Similarity Between Top Subcategories"
     )
     
-    # Add text values for larger heatmaps, but only if not too many categories
-    if len(all_categories) <= 15:
-        text = alt.Chart(heatmap_data).mark_text().encode(
-            x=alt.X('Category2:N'),
-            y=alt.Y('Category1:N'),
-            text=alt.Text('Jaccard:Q', format='.2f'),
-            color=alt.condition(
-                alt.datum.Jaccard > 0.4,
-                alt.value('white'),
-                alt.value('black')
-            )
+    # Add text values
+    text = alt.Chart(heatmap_data).mark_text().encode(
+        x=alt.X('Category2:N'),
+        y=alt.Y('Category1:N'),
+        text=alt.Text('Jaccard:Q', format='.2f'),
+        color=alt.condition(
+            alt.datum.Jaccard > 0.4,
+            alt.value('white'),
+            alt.value('black')
         )
-        # Display heatmap with text
-        st.altair_chart(heatmap + text, use_container_width=True)
-    else:
-        # Display just the heatmap without text for larger matrices
-        st.altair_chart(heatmap, use_container_width=True)
+    )
+    
+    # Display heatmap with text
+    st.altair_chart(heatmap + text, use_container_width=True)
     
     # Key insights section
     st.subheader("Key Insights:")
@@ -540,20 +483,11 @@ def show_sub_similarity():
         most_similar = top_similarities.iloc[0]
         pair_name = most_similar['Pair'] if 'Pair' in most_similar else f"{most_similar['Category1']} & {most_similar['Category2']}"
         
-        # Find clusters of highly similar subcategories
-        high_similarity_threshold = 0.5  # Adjustable threshold
-        high_similarity_pairs = sub_sim_df[
-            (sub_sim_df['Category1'] != sub_sim_df['Category2']) & 
-            (sub_sim_df['Jaccard'] > high_similarity_threshold)
-        ]
-        
-        num_high_similarity = len(high_similarity_pairs)
-        
         st.markdown(f"""
         - **{pair_name}** have the highest similarity ({most_similar['Jaccard']:.2f}).
-        - There are {num_high_similarity} pairs of subcategories with similarity above {high_similarity_threshold}.
-        - The heatmap reveals the overall structure of relationships between all subcategories.
-        - Darker blue areas indicate clusters of related concepts in sustainable aviation.
+        - This suggests significant overlap in how these subcategories are discussed within the analyzed documents.
+        - Higher similarity scores indicate topics that frequently appear together, potentially indicating conceptual relationships.
+        - Sub-category similarities provide more granular insights than main category comparisons.
         """)
     else:
         st.warning("No similarity data available for analysis.")
