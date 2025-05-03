@@ -4,62 +4,15 @@ import altair as alt
 
 # Page configuration
 st.set_page_config(
-    page_title="Aviation Sustainability Dashboard",
+    page_title="Aviation Sustainability Dashboard - Main Categories",
     layout="wide"
 )
 
 # Title
-st.title("Aviation Sustainability Categories")
+st.title("Aviation Sustainability Main Categories")
 
-# Create DataFrame from data
-data = {
-    "Category": [
-        "Sustainable Aviation Fuels",
-        "Electrification of Aviation",
-        "Advanced Air Mobility",
-        "Hydrogen Powered Aviation",
-        "Aircraft Efficiency",
-        "Innovating",
-        "Prognosticating",
-        "Operationalizing",
-        "Synchronizing"
-    ],
-    "Total_Term_Frequency": [
-        67861,
-        27678,
-        14624,
-        13478,
-        9232,
-        8473,
-        7010,
-        5300,
-        3750
-    ],
-    "N_Cases": [
-        606,
-        675,
-        558,
-        562,
-        499,
-        561,
-        513,
-        537,
-        426
-    ],
-    "TFIDF": [
-        27.55,
-        5.66,
-        8.61,
-        7.71,
-        8.14,
-        4.88,
-        5.64,
-        3.62,
-        5.27
-    ]
-}
-
-df = pd.DataFrame(data)
+# Load CSV data
+df = pd.read_csv('main_category_summary.csv')
 
 # Metric selector
 metric_type = st.radio(
@@ -96,7 +49,7 @@ with col1:
             "N_Cases": "Number of Cases",
             "TFIDF": "TF-IDF Score"
         }[metric_type]),
-        color=alt.Color('Category:N', legend=None),
+        color=alt.Color('Category:N', scale=alt.Scale(scheme='tableau10')),
         tooltip=['Category', metric_type]
     ).properties(
         height=400
@@ -131,24 +84,8 @@ with col2:
 # Key insights section
 st.subheader("Key Insights:")
 st.markdown("""
-- **Sustainable Aviation Fuels** has the highest term frequency and TF-IDF score, suggesting it's the dominant topic in aviation sustainability discussions.
-- **Electrification of Aviation** appears in the most cases, indicating widespread but potentially less focused discussion.
-- Despite lower term frequency, **Advanced Air Mobility** and **Aircraft Efficiency** have high TF-IDF scores, suggesting they're distinctive topics within their documents.
-- Process-oriented categories like **Operationalizing** and **Synchronizing** show lower metrics overall, indicating they're less prominent in the discourse.
-""")
-
-# Add requirements.txt guidance
-st.sidebar.title("Deployment Info")
-st.sidebar.info("""
-To deploy this dashboard to Streamlit Community Cloud:
-
-1. Save this code as `app.py`
-2. Create a `requirements.txt` file with:
-   ```
-   streamlit
-   pandas
-   altair
-   ```
-3. Push both files to a GitHub repository
-4. Go to share.streamlit.io and connect to your repository
+- **Innovating** has the highest term frequency and appears in the most cases, indicating it's the dominant topic.
+- **Operationalizing** has the lowest TF-IDF score, suggesting less distinctive terminology.
+- **Prognosticating** has a relatively high TF-IDF score despite lower frequency, showing specialized terminology.
+- **Synchronizing** appears in the fewest documents but maintains a competitive TF-IDF score.
 """)
