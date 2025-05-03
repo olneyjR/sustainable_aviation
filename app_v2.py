@@ -13,8 +13,8 @@ st.set_page_config(
 # Title
 st.title("Aviation Sustainability Categories (V2)")
 
-# Define data directory (point to the subdirectory)
-DATA_DIR = "sustainable_aviation_v2"
+# Define data directory (point to the correct version 2 directory)
+DATA_DIR = "sustainable_aviation_v2"  # Make sure this directory exists
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
@@ -25,17 +25,17 @@ page = st.sidebar.radio(
 
 # Try to load all data files from the v2 subdirectory
 try:
-    # Load main category data
-    main_df = pd.read_csv(os.path.join(DATA_DIR, 'main_category_summary.csv'))
+    # Load main category data - make sure filenames match exactly what's in the v2 directory
+    main_df = pd.read_csv(os.path.join(DATA_DIR, 'main_category_summary_v2.csv'))
     
     # Load sub-category data
-    sub_df = pd.read_csv(os.path.join(DATA_DIR, 'sub_category_summary.csv'))
+    sub_df = pd.read_csv(os.path.join(DATA_DIR, 'sub_category_summary_v2.csv'))
     
     # Load main similarity matrix
-    main_sim_df = pd.read_csv(os.path.join(DATA_DIR, 'main_jaccard_matrix.csv'))
+    main_sim_df = pd.read_csv(os.path.join(DATA_DIR, 'main_jaccard_matrix_v2.csv'))
     
     # Load sub similarity matrix
-    sub_sim_df = pd.read_csv(os.path.join(DATA_DIR, 'sub_jaccard_matrix.csv'))
+    sub_sim_df = pd.read_csv(os.path.join(DATA_DIR, 'sub_jaccard_matrix_v2.csv'))
     
     # Data loaded successfully
     st.sidebar.success(f"All data files loaded successfully from {DATA_DIR}!")
@@ -150,7 +150,7 @@ def show_sub_categories():
     st.header("Sub Categories Analysis - All Subcategories")
     
     if sub_df.empty:
-        st.warning(f"Sub-category data not available. Please make sure sub_category_summary.csv is in the {DATA_DIR} directory.")
+        st.warning(f"Sub-category data not available. Please make sure sub_category_summary_v2.csv is in the {DATA_DIR} directory.")
         return
     
     # Metric selector
@@ -271,7 +271,7 @@ def show_main_similarity():
     st.header("Main Category Similarity Analysis")
     
     if main_sim_df.empty:
-        st.warning(f"Main category similarity data not available. Please make sure main_jaccard_matrix.csv is in the {DATA_DIR} directory.")
+        st.warning(f"Main category similarity data not available. Please make sure main_jaccard_matrix_v2.csv is in the {DATA_DIR} directory.")
         return
     
     # Convert similarity data to matrix format for visualization
@@ -340,7 +340,7 @@ def show_sub_similarity():
     st.header("Sub Category Similarity Analysis")
     
     if sub_sim_df.empty:
-        st.warning(f"Sub-category similarity data not available. Please make sure sub_jaccard_matrix.csv is in the {DATA_DIR} directory.")
+        st.warning(f"Sub-category similarity data not available. Please make sure sub_jaccard_matrix_v2.csv is in the {DATA_DIR} directory.")
         return
     
     # Process the sub-category data
