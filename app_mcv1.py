@@ -1,34 +1,7 @@
-# Jupyter to Streamlit Deployment Guide
-# This file contains code you can run in a Jupyter notebook to help deploy your app to Streamlit
-
-# Step 1: Export your CSV data from Jupyter
-import pandas as pd
-import os
-
-# Sample data preparation (you already have this in your notebook)
-# Replace this with your actual data loading/preparation code if needed
-main_category_data = {
-    "Category": ["Innovating", "Operationalizing", "Prognosticating", "Synchronizing"],
-    "Total_Term_Frequency": [51373, 8833, 7778, 3994],
-    "N_Cases": [705, 595, 525, 436],
-    "TFIDF": [5.665513023284259, 3.6725261028497447, 5.519391664177306, 5.114374824487207]
-}
-df = pd.DataFrame(main_category_data)
-
-# Save the data to CSV
-df.to_csv('main_category_summary.csv', index=False)
-print("CSV file saved to:", os.path.abspath('main_category_summary.csv'))
-
-# Step 2: Create requirements.txt file
-with open('requirements.txt', 'w') as f:
-    f.write('streamlit\npandas\naltair')
-print("requirements.txt file created")
-
-# Step 3: Create app.py file (or you can create this manually)
-with open('app.py', 'w') as f:
-    f.write('''import streamlit as st
+import streamlit as st
 import pandas as pd
 import altair as alt
+import os
 
 # Page configuration
 st.set_page_config(
@@ -39,8 +12,38 @@ st.set_page_config(
 # Title
 st.title("Aviation Sustainability Main Categories")
 
-# Load CSV data
-df = pd.read_csv('main_category_summary.csv')
+# Add debug info
+st.sidebar.subheader("Debug Information")
+st.sidebar.write(f"Current working directory: {os.getcwd()}")
+st.sidebar.write(f"Files in directory: {os.listdir()}")
+
+# Create fallback data in case CSV is missing
+fallback_data = {
+    "Category": ["Innovating", "Operationalizing", "Prognosticating", "Synchronizing"],
+    "Total_Term_Frequency": [51373, 8833, 7778, 3994],
+    "N_Cases": [705, 595, 525, 436],
+    "TFIDF": [5.665513023284259, 3.6725261028497447, 5.519391664177306, 5.114374824487207]
+}
+
+# Try to load CSV data, use fallback if not found
+try:
+    # First try the expected location
+    df = pd.read_csv('main_category_summary.csv')
+    st.sidebar.success("Successfully loaded CSV file!")
+except FileNotFoundError:
+    st.sidebar.warning("Could not find main_category_summary.csv - using fallback data")
+    # If that fails, try data directory
+    try:
+        df = pd.read_csv('./data/main_category_summary.csv')
+        st.sidebar.success("Successfully loaded CSV from data directory!")
+    except FileNotFoundError:
+        # If all fails, use the fallback data
+        df = pd.DataFrame(fallback_data)
+        st.sidebar.warning("Using hardcoded fallback data as CSV could not be found")
+
+# Display raw data in sidebar for debugging
+st.sidebar.subheader("Raw Data")
+st.sidebar.dataframe(df)
 
 # Metric selector
 metric_type = st.radio(
@@ -117,24 +120,3 @@ st.markdown("""
 - **Prognosticating** has a relatively high TF-IDF score despite lower frequency, showing specialized terminology.
 - **Synchronizing** appears in the fewest documents but maintains a competitive TF-IDF score.
 """)
-''')
-print("app.py file created")
-
-# Step 4: Initialize Git repository and push to GitHub (run these in terminal)
-print("\n--- GitHub Deployment Commands ---")
-print("Run these commands in your terminal:")
-print("cd /path/to/sustainable_aviation")
-print("git init")
-print("git add main_category_summary.csv app.py requirements.txt")
-print("git commit -m \"Add Streamlit app with aviation sustainability data\"")
-print("git remote add origin https://github.com/your-username/sustainable_aviation.git")
-print("git push -u origin main")
-
-# Step 5: Deploy to Streamlit Cloud
-print("\n--- Streamlit Cloud Deployment ---")
-print("1. Go to https://share.streamlit.io/")
-print("2. Sign in with GitHub")
-print("3. Click 'New app'")
-print("4. Select your repository, branch (main), and app.py file")
-print("5. Click 'Deploy!'")
-print("\nYour app will be available at: https://your-username-sustainable-aviation.streamlit.app")
