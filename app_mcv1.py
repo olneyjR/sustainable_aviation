@@ -170,9 +170,13 @@ def show_sub_categories():
     # Create combined category name for better labels
     df_sorted['Full_Category'] = df_sorted['MC'] + ': ' + df_sorted['PC']
     
-    # Bar chart with Altair for all subcategories
-    chart = alt.Chart(df_sorted).mark_bar().encode(
-        y=alt.Y('Full_Category:N', sort=None, title=None),
+    # Limit to top 10 for better visibility (can be adjusted)
+    # Comment out this line if you want to see all subcategories
+    df_top = df_sorted.head(16)
+    
+    # Bar chart with Altair for top subcategories
+    chart = alt.Chart(df_top).mark_bar().encode(
+        y=alt.Y('Full_Category:N', sort=None, title=None, axis=alt.Axis(labelLimit=300, labelFontSize=12)),
         x=alt.X(f'{metric_type}:Q', title={
             "Total_Term_Frequency": "Total Term Frequency",
             "N_Cases": "Number of Cases",
@@ -181,10 +185,28 @@ def show_sub_categories():
         color=alt.Color('MC:N', scale=alt.Scale(scheme='tableau10')),
         tooltip=['Full_Category', metric_type, 'MC', 'PC']
     ).properties(
-        height=600
+        height=500
     )
     
     st.altair_chart(chart, use_container_width=True)
+    
+    # Add option to see all subcategories
+    if st.checkbox("Show all subcategories"):
+        # Bar chart with Altair for all subcategories
+        all_chart = alt.Chart(df_sorted).mark_bar().encode(
+            y=alt.Y('Full_Category:N', sort=None, title=None, axis=alt.Axis(labelLimit=300, labelFontSize=12)),
+            x=alt.X(f'{metric_type}:Q', title={
+                "Total_Term_Frequency": "Total Term Frequency",
+                "N_Cases": "Number of Cases",
+                "TFIDF": "TF-IDF Score"
+            }[metric_type]),
+            color=alt.Color('MC:N', scale=alt.Scale(scheme='tableau10')),
+            tooltip=['Full_Category', metric_type, 'MC', 'PC']
+        ).properties(
+            height=800
+        )
+        
+        st.altair_chart(all_chart, use_container_width=True)
 
     # Key insights section
     st.subheader("Key Insights:")
@@ -208,34 +230,37 @@ def show_sub_categories():
     st.subheader("Sub-Categories by Main Category")
     
     # Create a multi-column view for main categories
-    cols = st.columns(len(sub_df['MC'].unique()))
+    tabs = st.tabs(sorted(sub_df['MC'].unique()))
     
     # For each main category, show a bar chart of its subcategories
     for i, mc in enumerate(sorted(sub_df['MC'].unique())):
-        with cols[i]:
+        with tabs[i]:
             # Filter data for this main category
             mc_data = df_sorted[df_sorted['MC'] == mc].copy()
             
             # Sort by selected metric
             mc_data = mc_data.sort_values(by=metric_type, ascending=False)
             
-            st.subheader(f"{mc}")
-            
             # Create chart for this main category
             mc_chart = alt.Chart(mc_data).mark_bar().encode(
-                y=alt.Y('PC:N', sort=None, title=None),
-                x=alt.X(f'{metric_type}:Q', title=None),
+                y=alt.Y('PC:N', sort=None, title=None, axis=alt.Axis(labelLimit=300, labelFontSize=12)),
+                x=alt.X(f'{metric_type}:Q', title={
+                    "Total_Term_Frequency": "Total Term Frequency",
+                    "N_Cases": "Number of Cases",
+                    "TFIDF": "TF-IDF Score"
+                }[metric_type]),
                 color=alt.Color('PC:N', scale=alt.Scale(scheme='tableau10')),
                 tooltip=['PC', metric_type]
             ).properties(
-                height=200
+                height=300
             )
             
             st.altair_chart(mc_chart, use_container_width=True)
             
             # Show top subcategory for this main category
             top_subcat = mc_data.iloc[0]['PC']
-            st.caption(f"Top subcategory: {top_subcat}")
+            top_value = mc_data.iloc[0][metric_type]
+            st.caption(f"Top subcategory: {top_subcat} ({metric_type}: {top_value})")
 
 # Function for Main Category Similarity Analysis page
 def show_main_similarity():
@@ -267,8 +292,8 @@ def show_main_similarity():
     
     # Create heatmap
     heatmap = alt.Chart(heatmap_data).mark_rect().encode(
-        x=alt.X('Category1:N', title='Category'),
-        y=alt.Y('Category2:N', title='Category'),
+        x=alt.X('Category1:N', title='Category', axis=alt.Axis(labelAngle=0, labelFontSize=12)),
+        y=alt.Y('Category2:N', title='Category', axis=alt.Axis(labelFontSize=12)),
         color=alt.Color('Jaccard:Q', scale=alt.Scale(scheme='blues')),
         tooltip=['Category1', 'Category2', 'Jaccard']
     ).properties(
@@ -345,27 +370,40 @@ def show_sub_similarity():
     
     # Create a bar chart of top similarities
     if 'Name1' in top_similarities.columns and 'Name2' in top_similarities.columns:
-        top_similarities['Pair'] = top_similarities['Name1'] + ' & ' + top_similarities['Name2']
+        # Truncate names if too long for better visualization
+        top_similarities['Name1_Short'] = top_similarities['Name1'].apply(lambda x: x[:40] + '...' if len(x) > 40 else x)
+        top_similarities['Name2_Short'] = top_similarities['Name2'].apply(lambda x: x[:40] + '...' if len(x) > 40 else x)
+        top_similarities['Pair'] = top_similarities['Name1_Short'] + ' & ' + top_similarities['Name2_Short']
     else:
-        top_similarities['Pair'] = top_similarities['Category1'] + ' & ' + top_similarities['Category2']
+        # Truncate for better visualization
+        top_similarities['Cat1_Short'] = top_similarities['Category1'].apply(lambda x: x[:40] + '...' if len(x) > 40 else x)
+        top_similarities['Cat2_Short'] = top_similarities['Category2'].apply(lambda x: x[:40] + '...' if len(x) > 40 else x)
+        top_similarities['Pair'] = top_similarities['Cat1_Short'] + ' & ' + top_similarities['Cat2_Short']
     
-    top_chart = alt.Chart(top_similarities).mark_bar().encode(
-        y=alt.Y('Pair:N', sort='-x', title=None),
+    # Limit to top 15 for better readability
+    display_top = top_similarities.head(15)
+    
+    top_chart = alt.Chart(display_top).mark_bar().encode(
+        y=alt.Y('Pair:N', sort='-x', title=None, axis=alt.Axis(labelLimit=500, labelFontSize=11)),
         x=alt.X('Jaccard:Q', title='Jaccard Similarity'),
         color=alt.Color('Jaccard:Q', scale=alt.Scale(scheme='blues')),
         tooltip=['Pair', 'Jaccard']
     ).properties(
-        height=600
+        height=400
     )
     
     st.altair_chart(top_chart, use_container_width=True)
     
-    # Show heatmap of all similarities
+    # Add option to see all top 20
+    if st.checkbox("Show all top 20 pairs"):
+        st.dataframe(top_similarities[['Category1', 'Category2', 'Jaccard']].reset_index(drop=True), use_container_width=True)
+    
+    # Show heatmap of top similarities
     st.subheader("Similarity Heatmap for Top Subcategories")
     
     # Get the top subcategories for the heatmap (too many might make it unreadable)
     top_categories = set()
-    for _, row in top_similarities.head(15).iterrows():
+    for _, row in top_similarities.head(10).iterrows():
         top_categories.add(row['Category1'])
         top_categories.add(row['Category2'])
     
@@ -393,9 +431,13 @@ def show_sub_similarity():
         if 'Name1' in sub_sim_df.columns:
             # Find the display name for this category
             display_name = sub_sim_df[sub_sim_df['Category1'] == cat]['Name1'].iloc[0]
+            # Truncate if too long
+            display_name = display_name[:30] + '...' if len(display_name) > 30 else display_name
             display_categories.append(display_name)
         else:
-            display_categories.append(cat)
+            # Truncate if too long
+            display_cat = cat[:30] + '...' if len(cat) > 30 else cat
+            display_categories.append(display_cat)
     
     heatmap_df = pd.DataFrame(heatmap_matrix, index=display_categories, columns=display_categories)
     
@@ -406,15 +448,15 @@ def show_sub_similarity():
         'Jaccard': [heatmap_df.loc[cat1, cat2] for cat1 in display_categories for cat2 in display_categories]
     })
     
-    # Create heatmap
+    # Create heatmap with better axis labels
     heatmap = alt.Chart(heatmap_data).mark_rect().encode(
-        x=alt.X('Category2:N', title=None),
-        y=alt.Y('Category1:N', title=None),
+        x=alt.X('Category2:N', title=None, axis=alt.Axis(labelAngle=45, labelLimit=200, labelFontSize=10)),
+        y=alt.Y('Category1:N', title=None, axis=alt.Axis(labelLimit=200, labelFontSize=10)),
         color=alt.Color('Jaccard:Q', scale=alt.Scale(scheme='blues')),
         tooltip=['Category1', 'Category2', 'Jaccard']
     ).properties(
-        width=700,
-        height=600,
+        width=600,
+        height=500,
         title="Jaccard Similarity Between Top Subcategories"
     )
     
