@@ -141,20 +141,13 @@ def show_main_categories():
     - **Synchronizing** appears in the fewest documents but maintains a competitive TF-IDF score.
     """)
 
-# Function for Sub Categories page
+# Function for Sub Categories page (no filters)
 def show_sub_categories():
-    st.header("Sub Categories Analysis")
+    st.header("Sub Categories Analysis - All Subcategories")
     
     if sub_df.empty:
         st.warning("Sub-category data not available. Please make sure sub_category_summary.csv is in the same directory as this app.")
         return
-    
-    # Main category selector
-    main_categories = sorted(sub_df['MC'].unique())
-    selected_main_category = st.selectbox("Select Main Category:", main_categories)
-    
-    # Filter data for selected main category
-    filtered_df = sub_df[sub_df['MC'] == selected_main_category].reset_index(drop=True)
     
     # Metric selector
     metric_type = st.radio(
@@ -169,63 +162,80 @@ def show_sub_categories():
     )
 
     # Sort data based on selected metric
-    df_sorted = filtered_df.sort_values(by=metric_type, ascending=False).reset_index(drop=True)
+    df_sorted = sub_df.sort_values(by=metric_type, ascending=False).reset_index(drop=True)
     
-    # Create two columns for the charts
-    col1, col2 = st.columns([3, 2])
-
-    with col1:
-        st.subheader(f"Sub-Categories for {selected_main_category}")
-        
-        # Bar chart with Altair
-        chart = alt.Chart(df_sorted).mark_bar().encode(
-            y=alt.Y('PC:N', sort=None, title=None),
-            x=alt.X(f'{metric_type}:Q', title={
-                "Total_Term_Frequency": "Total Term Frequency",
-                "N_Cases": "Number of Cases",
-                "TFIDF": "TF-IDF Score"
-            }[metric_type]),
-            color=alt.Color('PC:N', scale=alt.Scale(scheme='tableau10')),
-            tooltip=['PC', metric_type]
-        ).properties(
-            height=400
-        )
-        
-        st.altair_chart(chart, use_container_width=True)
-
-    with col2:
-        st.subheader("Distribution")
-        
-        # Create pie chart with Altair
-        pie_data = df_sorted.copy()
-        pie_data['angle'] = pie_data[metric_type] / pie_data[metric_type].sum() * 2 * 3.14159
-        pie_data['percentage'] = (pie_data[metric_type] / pie_data[metric_type].sum() * 100).round(1).astype(str) + '%'
-        
-        pie_chart = alt.Chart(pie_data).mark_arc().encode(
-            theta='angle:Q',
-            color=alt.Color('PC:N', scale=alt.Scale(scheme='tableau10')),
-            tooltip=['PC', metric_type, 'percentage']
-        ).properties(
-            width=300,
-            height=300
-        )
-        
-        st.altair_chart(pie_chart, use_container_width=True)
+    # Create a full-width chart
+    st.subheader("All Sub-Categories Ranked")
     
+    # Create combined category name for better labels
+    df_sorted['Full_Category'] = df_sorted['MC'] + ': ' + df_sorted['PC']
+    
+    # Bar chart with Altair for all subcategories
+    chart = alt.Chart(df_sorted).mark_bar().encode(
+        y=alt.Y('Full_Category:N', sort=None, title=None),
+        x=alt.X(f'{metric_type}:Q', title={
+            "Total_Term_Frequency": "Total Term Frequency",
+            "N_Cases": "Number of Cases",
+            "TFIDF": "TF-IDF Score"
+        }[metric_type]),
+        color=alt.Color('MC:N', scale=alt.Scale(scheme='tableau10')),
+        tooltip=['Full_Category', metric_type, 'MC', 'PC']
+    ).properties(
+        height=600
+    )
+    
+    st.altair_chart(chart, use_container_width=True)
+
     # Key insights section
     st.subheader("Key Insights:")
     
-    # Dynamically generate insights based on the data
-    highest_tf = df_sorted.iloc[0]['PC']
-    highest_tfidf_row = df_sorted.sort_values(by='TFIDF', ascending=False).iloc[0]
-    highest_tfidf = highest_tfidf_row['PC']
-    highest_tfidf_score = highest_tfidf_row['TFIDF']
+    # Calculate top subcategories for different metrics
+    top_tf = df_sorted.iloc[0]['Full_Category']
+    top_tfidf_row = df_sorted.sort_values(by='TFIDF', ascending=False).iloc[0]
+    top_tfidf = top_tfidf_row['Full_Category']
+    top_tfidf_score = top_tfidf_row['TFIDF']
+    top_cases_row = df_sorted.sort_values(by='N_Cases', ascending=False).iloc[0]
+    top_cases = top_cases_row['Full_Category']
     
     st.markdown(f"""
-    - Within the **{selected_main_category}** category, **{highest_tf}** has the highest term frequency.
-    - **{highest_tfidf}** has the highest TF-IDF score ({highest_tfidf_score:.2f}), indicating it's the most distinctive subcategory.
-    - The distribution shows how each subcategory contributes to the overall {selected_main_category} category discussion.
+    - **{top_tf}** has the highest term frequency among all subcategories.
+    - **{top_tfidf}** has the highest TF-IDF score ({top_tfidf_score:.2f}), indicating it's the most distinctive subcategory overall.
+    - **{top_cases}** appears in the most cases, showing it has the widest coverage across documents.
+    - The chart shows how subcategories from different main categories compare to each other.
     """)
+    
+    # Add grouped view by main category
+    st.subheader("Sub-Categories by Main Category")
+    
+    # Create a multi-column view for main categories
+    cols = st.columns(len(sub_df['MC'].unique()))
+    
+    # For each main category, show a bar chart of its subcategories
+    for i, mc in enumerate(sorted(sub_df['MC'].unique())):
+        with cols[i]:
+            # Filter data for this main category
+            mc_data = df_sorted[df_sorted['MC'] == mc].copy()
+            
+            # Sort by selected metric
+            mc_data = mc_data.sort_values(by=metric_type, ascending=False)
+            
+            st.subheader(f"{mc}")
+            
+            # Create chart for this main category
+            mc_chart = alt.Chart(mc_data).mark_bar().encode(
+                y=alt.Y('PC:N', sort=None, title=None),
+                x=alt.X(f'{metric_type}:Q', title=None),
+                color=alt.Color('PC:N', scale=alt.Scale(scheme='tableau10')),
+                tooltip=['PC', metric_type]
+            ).properties(
+                height=200
+            )
+            
+            st.altair_chart(mc_chart, use_container_width=True)
+            
+            # Show top subcategory for this main category
+            top_subcat = mc_data.iloc[0]['PC']
+            st.caption(f"Top subcategory: {top_subcat}")
 
 # Function for Main Category Similarity Analysis page
 def show_main_similarity():
@@ -296,7 +306,7 @@ def show_main_similarity():
     - This analysis helps identify which sustainability topics tend to be discussed together.
     """)
 
-# Function for Sub Category Similarity Analysis page
+# Function for Sub Category Similarity Analysis page (no filters)
 def show_sub_similarity():
     st.header("Sub Category Similarity Analysis")
     
@@ -304,86 +314,114 @@ def show_sub_similarity():
         st.warning("Sub-category similarity data not available. Please make sure sub_jaccard_matrix.csv is in the same directory as this app.")
         return
     
-    # The sub-category similarity matrix is likely very large, so let's create a filtered view
+    # Process the sub-category data
+    # Check the format of Category1 and Category2
+    # They might be in format "MainCategory.SubCategory" or something else
+    sample_cat = sub_sim_df['Category1'].iloc[0]
     
-    # Extract main categories from the Category1 column (format: MainCategory.SubCategory)
-    sub_sim_df['MC1'] = sub_sim_df['Category1'].apply(lambda x: x.split('.')[0] if '.' in x else x)
-    sub_sim_df['MC2'] = sub_sim_df['Category2'].apply(lambda x: x.split('.')[0] if '.' in x else x)
+    if '.' in sample_cat:
+        # Format is MainCategory.SubCategory
+        sub_sim_df['MC1'] = sub_sim_df['Category1'].apply(lambda x: x.split('.')[0] if '.' in x else x)
+        sub_sim_df['SC1'] = sub_sim_df['Category1'].apply(lambda x: x.split('.')[1] if '.' in x else x)
+        sub_sim_df['MC2'] = sub_sim_df['Category2'].apply(lambda x: x.split('.')[0] if '.' in x else x)
+        sub_sim_df['SC2'] = sub_sim_df['Category2'].apply(lambda x: x.split('.')[1] if '.' in x else x)
+        
+        # Create full display names
+        sub_sim_df['Name1'] = sub_sim_df['MC1'] + ': ' + sub_sim_df['SC1']
+        sub_sim_df['Name2'] = sub_sim_df['MC2'] + ': ' + sub_sim_df['SC2']
+    else:
+        # Assumed format is just subcategory names
+        # In this case, we'll need to find a way to identify main categories
+        # For now, just use the category names as is
+        sub_sim_df['Name1'] = sub_sim_df['Category1']
+        sub_sim_df['Name2'] = sub_sim_df['Category2']
     
-    # Extract sub categories
-    sub_sim_df['SC1'] = sub_sim_df['Category1'].apply(lambda x: x.split('.')[1] if '.' in x else x)
-    sub_sim_df['SC2'] = sub_sim_df['Category2'].apply(lambda x: x.split('.')[1] if '.' in x else x)
+    # Show top similarities
+    st.subheader("Top 20 Subcategory Similarities")
     
-    # Main category filters
-    st.subheader("Filter Similarity Analysis")
-    col1, col2 = st.columns(2)
+    # Get top 20 similarities, excluding self-similarities
+    top_similarities = sub_sim_df[sub_sim_df['Category1'] != sub_sim_df['Category2']]
+    top_similarities = top_similarities.sort_values(by='Jaccard', ascending=False).head(20)
     
-    with col1:
-        main_cats = sorted(sub_sim_df['MC1'].unique())
-        selected_mc1 = st.selectbox("Select First Main Category:", main_cats)
+    # Create a bar chart of top similarities
+    if 'Name1' in top_similarities.columns and 'Name2' in top_similarities.columns:
+        top_similarities['Pair'] = top_similarities['Name1'] + ' & ' + top_similarities['Name2']
+    else:
+        top_similarities['Pair'] = top_similarities['Category1'] + ' & ' + top_similarities['Category2']
     
-    with col2:
-        main_cats2 = sorted(sub_sim_df['MC2'].unique())
-        selected_mc2 = st.selectbox("Select Second Main Category:", main_cats2)
+    top_chart = alt.Chart(top_similarities).mark_bar().encode(
+        y=alt.Y('Pair:N', sort='-x', title=None),
+        x=alt.X('Jaccard:Q', title='Jaccard Similarity'),
+        color=alt.Color('Jaccard:Q', scale=alt.Scale(scheme='blues')),
+        tooltip=['Pair', 'Jaccard']
+    ).properties(
+        height=600
+    )
     
-    # Filter based on selections
+    st.altair_chart(top_chart, use_container_width=True)
+    
+    # Show heatmap of all similarities
+    st.subheader("Similarity Heatmap for Top Subcategories")
+    
+    # Get the top subcategories for the heatmap (too many might make it unreadable)
+    top_categories = set()
+    for _, row in top_similarities.head(15).iterrows():
+        top_categories.add(row['Category1'])
+        top_categories.add(row['Category2'])
+    
+    top_categories = sorted(list(top_categories))
+    
+    # Filter the dataframe to only include these categories
     filtered_sim = sub_sim_df[
-        (sub_sim_df['MC1'] == selected_mc1) & 
-        (sub_sim_df['MC2'] == selected_mc2)
+        (sub_sim_df['Category1'].isin(top_categories)) & 
+        (sub_sim_df['Category2'].isin(top_categories))
     ]
     
-    # Top similarities
-    st.subheader("Top Subcategory Similarities")
-    
-    # Get top 10 similarities
-    top_similarities = filtered_sim.sort_values(by='Jaccard', ascending=False).head(10)
-    
-    # Create a nice table
-    st.table(top_similarities[['Category1', 'Category2', 'Jaccard']].reset_index(drop=True))
-    
-    # Create a heatmap visualization
-    st.subheader("Similarity Heatmap")
-    
-    # Get unique subcategories
-    subcats1 = sorted(filtered_sim['SC1'].unique())
-    subcats2 = sorted(filtered_sim['SC2'].unique())
-    
-    # Create a matrix for heatmap
-    heatmap_matrix = np.zeros((len(subcats1), len(subcats2)))
+    # Create a matrix for heatmap (assumes Category1 and Category2 contain the same values)
+    heatmap_matrix = np.zeros((len(top_categories), len(top_categories)))
     
     # Fill the matrix
     for _, row in filtered_sim.iterrows():
-        if row['SC1'] in subcats1 and row['SC2'] in subcats2:
-            i = subcats1.index(row['SC1'])
-            j = subcats2.index(row['SC2'])
+        if row['Category1'] in top_categories and row['Category2'] in top_categories:
+            i = top_categories.index(row['Category1'])
+            j = top_categories.index(row['Category2'])
             heatmap_matrix[i][j] = row['Jaccard']
     
     # Create a dataframe for the heatmap
-    heatmap_df = pd.DataFrame(heatmap_matrix, index=subcats1, columns=subcats2)
+    display_categories = []
+    for cat in top_categories:
+        if 'Name1' in sub_sim_df.columns:
+            # Find the display name for this category
+            display_name = sub_sim_df[sub_sim_df['Category1'] == cat]['Name1'].iloc[0]
+            display_categories.append(display_name)
+        else:
+            display_categories.append(cat)
+    
+    heatmap_df = pd.DataFrame(heatmap_matrix, index=display_categories, columns=display_categories)
     
     # Create a long-form dataframe for Altair
     heatmap_data = pd.DataFrame({
-        'Subcategory1': [sc1 for sc1 in subcats1 for sc2 in subcats2],
-        'Subcategory2': [sc2 for sc1 in subcats1 for sc2 in subcats2],
-        'Jaccard': [heatmap_df.loc[sc1, sc2] for sc1 in subcats1 for sc2 in subcats2]
+        'Category1': [cat1 for cat1 in display_categories for cat2 in display_categories],
+        'Category2': [cat2 for cat1 in display_categories for cat2 in display_categories],
+        'Jaccard': [heatmap_df.loc[cat1, cat2] for cat1 in display_categories for cat2 in display_categories]
     })
     
     # Create heatmap
     heatmap = alt.Chart(heatmap_data).mark_rect().encode(
-        x=alt.X('Subcategory2:N', title=f'{selected_mc2} Subcategories'),
-        y=alt.Y('Subcategory1:N', title=f'{selected_mc1} Subcategories'),
+        x=alt.X('Category2:N', title=None),
+        y=alt.Y('Category1:N', title=None),
         color=alt.Color('Jaccard:Q', scale=alt.Scale(scheme='blues')),
-        tooltip=['Subcategory1', 'Subcategory2', 'Jaccard']
+        tooltip=['Category1', 'Category2', 'Jaccard']
     ).properties(
-        width=600,
-        height=400,
-        title=f"Jaccard Similarity Between {selected_mc1} and {selected_mc2} Subcategories"
+        width=700,
+        height=600,
+        title="Jaccard Similarity Between Top Subcategories"
     )
     
     # Add text values
     text = alt.Chart(heatmap_data).mark_text().encode(
-        x=alt.X('Subcategory2:N'),
-        y=alt.Y('Subcategory1:N'),
+        x=alt.X('Category2:N'),
+        y=alt.Y('Category1:N'),
         text=alt.Text('Jaccard:Q', format='.2f'),
         color=alt.condition(
             alt.datum.Jaccard > 0.4,
@@ -399,17 +437,18 @@ def show_sub_similarity():
     st.subheader("Key Insights:")
     
     # Find the highest similarity pair
-    if not filtered_sim.empty:
-        most_similar = filtered_sim.sort_values(by='Jaccard', ascending=False).iloc[0]
+    if not top_similarities.empty:
+        most_similar = top_similarities.iloc[0]
+        pair_name = most_similar['Pair'] if 'Pair' in most_similar else f"{most_similar['Category1']} & {most_similar['Category2']}"
         
         st.markdown(f"""
-        - **{most_similar['Category1']}** and **{most_similar['Category2']}** have the highest similarity ({most_similar['Jaccard']:.2f}).
+        - **{pair_name}** have the highest similarity ({most_similar['Jaccard']:.2f}).
         - This suggests significant overlap in how these subcategories are discussed within the analyzed documents.
         - Higher similarity scores indicate topics that frequently appear together, potentially indicating conceptual relationships.
         - Sub-category similarities provide more granular insights than main category comparisons.
         """)
     else:
-        st.warning("No similarity data available for the selected main categories.")
+        st.warning("No similarity data available for analysis.")
 
 # Show the selected page
 if page == "Main Categories":
