@@ -1,0 +1,13 @@
+Category1,Category2,Jaccard
+Innovating,Operationalizing,0.7402945113788487
+Innovating,Prognosticating,0.6510067114093959
+Innovating,Synchronizing,0.5460704607046071
+Operationalizing,Innovating,0.7402945113788487
+Operationalizing,Prognosticating,0.6470588235294118
+Operationalizing,Synchronizing,0.5984496124031008
+Prognosticating,Innovating,0.6510067114093959
+Prognosticating,Operationalizing,0.6470588235294118
+Prognosticating,Synchronizing,0.6043405676126878
+Synchronizing,Innovating,0.5460704607046071
+Synchronizing,Operationalizing,0.5984496124031008
+Synchronizing,Prognosticating,0.6043405676126878
