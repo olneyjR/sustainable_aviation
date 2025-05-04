@@ -180,7 +180,7 @@ def show_sub_categories():
     
     # Bar chart with Altair for top subcategories
     chart = alt.Chart(df_top).mark_bar().encode(
-        y=alt.Y('Full_Category:N', sort=None, title=None, axis=alt.Axis(labelLimit=300, labelFontsize=11)),
+        y=alt.Y('Full_Category:N', sort=None, title=None, axis=alt.Axis(labelLimit=300, labelFontSize=11)),
         x=alt.X(f'{metric_type}:Q', title={
             "Total_Term_Frequency": "Total Term Frequency",
             "N_Cases": "Number of Cases",
@@ -198,7 +198,7 @@ def show_sub_categories():
     if st.checkbox("Show all subcategories"):
         # Bar chart with Altair for all subcategories
         all_chart = alt.Chart(df_sorted).mark_bar().encode(
-            y=alt.Y('Full_Category:N', sort=None, title=None, axis=alt.Axis(labelLimit=300, labelFontsize=11)),
+            y=alt.Y('Full_Category:N', sort=None, title=None, axis=alt.Axis(labelLimit=300, labelFontSize=11)),
             x=alt.X(f'{metric_type}:Q', title={
                 "Total_Term_Frequency": "Total Term Frequency",
                 "N_Cases": "Number of Cases",
@@ -247,7 +247,7 @@ def show_sub_categories():
             
             # Create chart for this main category
             mc_chart = alt.Chart(mc_data).mark_bar().encode(
-                y=alt.Y('PC:N', sort=None, title=None, axis=alt.Axis(labelLimit=300, labelFontsize=11)),
+                y=alt.Y('PC:N', sort=None, title=None, axis=alt.Axis(labelLimit=300, labelFontSize=11)),
                 x=alt.X(f'{metric_type}:Q', title={
                     "Total_Term_Frequency": "Total Term Frequency",
                     "N_Cases": "Number of Cases",
@@ -296,8 +296,8 @@ def show_main_similarity():
     
     # Create heatmap
     heatmap = alt.Chart(heatmap_data).mark_rect().encode(
-        x=alt.X('Category1:N', title='Category', axis=alt.Axis(labelAngle=0, labelFontsize=11)),
-        y=alt.Y('Category2:N', title='Category', axis=alt.Axis(labelFontsize=11)),
+        x=alt.X('Category1:N', title='Category', axis=alt.Axis(labelAngle=0, labelFontSize=11)),
+        y=alt.Y('Category2:N', title='Category', axis=alt.Axis(labelFontSize=11)),
         color=alt.Color('Jaccard:Q', scale=alt.Scale(scheme='blues')),
         tooltip=['Category1', 'Category2', 'Jaccard']
     ).properties(
